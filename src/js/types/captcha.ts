@@ -126,5 +126,3 @@ export const CaptchaSolutionSchema = z.object({
     solution: z.string().array(),
     salt: z.string(),
 })
-
-export const CaptchaSolutionArraySchema = z.array(CaptchaSolutionSchema)

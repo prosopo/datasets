@@ -17,7 +17,7 @@ import {
     AssetsResolver,
     Captcha,
     CaptchaSolution,
-    CaptchaSolutionArraySchema,
+    CaptchaSolutionSchema,
     CaptchaWithoutId,
     DatasetRaw,
     DatasetSchema,
@@ -47,14 +47,14 @@ export function parseCaptchaDataset(datasetJSON: JSON): DatasetRaw {
 
 /**
  * Make sure captcha solutions are in the correct format
- * @param {JSON} captchaJSON captcha solutions received from the api
+ * @param {CaptchaSolution[]} captchaSolutionArray captcha solutions received from the api
  * @return {CaptchaSolution[]} an array of parsed and sorted captcha solutions
  */
-export function parseAndSortCaptchaSolutions(captchaJSON: JSON): CaptchaSolution[] {
+export function parseAndSortCaptchaSolutions(captchaSolutionArray: CaptchaSolution[]): CaptchaSolution[] {
+    //TODO is this function redundant based on parsing done at the API level? The same thing is input as is output.
     try {
-        const parsed = CaptchaSolutionArraySchema.parse(captchaJSON)
-        parsed.map((captcha) => ({ ...captcha, solution: captcha.solution.sort() }))
-        return parsed
+        const parsed = captchaSolutionArray.map((captcha) => CaptchaSolutionSchema.parse(captcha))
+        return parsed.map((captcha) => ({ ...captcha, solution: captcha.solution.sort() }))
     } catch (err) {
         throw new ProsopoEnvError(err, 'ERRORS.CAPTCHA.PARSE_ERROR')
     }
@@ -123,6 +123,7 @@ export function computeCaptchaHash(
     sortItemHashes: boolean
 ): string {
     try {
+        console.log(captcha)
         const itemHashes: string[] = captcha.items.map((item, index) => {
             if (item.hash) {
                 return item.hash
@@ -165,21 +166,27 @@ export function matchItemsToSolutions(
     solutions: RawSolution[] | HashedSolution[],
     items: Item[] | undefined
 ): HashedSolution[] {
-    return (
-        solutions?.map((solution: string | number) => {
-            const hash = items && items[solution] && items[solution].hash ? items[solution].hash : solution
+    if (solutions) {
+        // required to get around https://github.com/microsoft/TypeScript/issues/33591
+        const _solutions: Array<HashedSolution | RawSolution> = [...solutions]
+        return _solutions
+            .filter((s) => s.toString().length)
+            .map((solution: string | number) => {
+                const hash = items && items[solution] && items[solution].hash ? items[solution].hash : solution
 
-            if (!hash) {
-                throw new ProsopoEnvError('CAPTCHA.MISSING_ITEM_HASH')
-            }
+                if (!hash) {
+                    throw new ProsopoEnvError('CAPTCHA.MISSING_ITEM_HASH')
+                }
 
-            if (!isHex(hash)) {
-                throw new ProsopoEnvError('CAPTCHA.INVALID_ITEM_HASH')
-            }
+                if (!isHex(hash)) {
+                    throw new ProsopoEnvError('CAPTCHA.INVALID_ITEM_HASH')
+                }
 
-            return hash
-        }) || []
-    )
+                return hash
+            })
+    } else {
+        return []
+    }
 }
 
 /**

@@ -57,7 +57,7 @@ export async function addItemHashesAndSolutionHashesToDataset(datasetRaw: Datase
         captchas: await Promise.all(
             datasetRaw.captchas.map(async (captcha) => {
                 const items = await Promise.all(captcha.items.map(async (item) => await computeItemHash(item)))
-
+                console.log(items)
                 return {
                     ...captcha,
                     items,
